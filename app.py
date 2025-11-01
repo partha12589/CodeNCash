@@ -1,14 +1,18 @@
 import streamlit as st
 import pandas as pd
 from utils.portfolio import PortfolioGenerator
-from utils.chat_handler import ChatHandler
+from utils.enhanced_chat_handler import EnhancedChatHandler
 from utils.market_data import IndianMarketData
 from utils.live_market_data import LiveMarketData, POPULAR_SCHEME_CODES
 from utils.visualizations import PortfolioVisualizations
+from utils.tax_optimizer import TaxOptimizer
+from utils.sip_calculator import SIPCalculator
+from utils.goal_based_planning import GoalBasedPlanner
 from datetime import datetime
 import time
-import os
 from pathlib import Path
+import plotly.graph_objects as go
+import plotly.express as px
 
 # Page configuration
 st.set_page_config(
@@ -22,294 +26,505 @@ st.set_page_config(
 with open('style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-# Check if logo exists
-logo_path = Path("logo.png")  # or logo.jpg, logo.svg
+# Check for logo
+logo_path = Path("logo.png")
 logo_exists = logo_path.exists()
-
-# Header with logo and live market data
-st.markdown('<div class="main-header fade-in">', unsafe_allow_html=True)
-
-# Create columns for header layout
-if logo_exists:
-    col_logo, col_title, col_indices = st.columns([0.5, 2, 1.5])
-else:
-    col_title, col_indices = st.columns([2, 1.5])
-
-# Logo column
-if logo_exists:
-    with col_logo:
-        st.image(str(logo_path), width=80)
-
-# Title column
-with col_title:
-    st.markdown('<h1 class="gradient-text" style="margin:0;">💰 CodeNCash</h1>', unsafe_allow_html=True)
-    st.markdown("*AI-Powered Investment Portfolio Generator for Indian Investors*")
-    st.caption("🤖 Smart. Personalized. Profitable.")
-
-# Market indices column
-with col_indices:
-    live_data = LiveMarketData()
-    indices = live_data.get_market_indices()
-    
-    if indices:
-        idx_col1, idx_col2 = st.columns(2)
-        
-        with idx_col1:
-            if 'nifty' in indices:
-                nifty = indices['nifty']
-                change_color = "🟢" if nifty['change'] >= 0 else "🔴"
-                st.metric(
-                    "NIFTY 50",
-                    f"₹{nifty['value']:,.2f}",
-                    f"{change_color} {nifty['change']:.2f}%"
-                )
-        
-        with idx_col2:
-            if 'sensex' in indices:
-                sensex = indices['sensex']
-                change_color = "🟢" if sensex['change'] >= 0 else "🔴"
-                st.metric(
-                    "SENSEX",
-                    f"₹{sensex['value']:,.2f}",
-                    f"{change_color} {sensex['change']:.2f}%"
-                )
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Quick stats bar
-stats_col1, stats_col2, stats_col3, stats_col4 = st.columns(4)
-
-with stats_col1:
-    st.markdown("**📊 Asset Classes**")
-    st.caption("Equity • Debt • Hybrid")
-
-with stats_col2:
-    st.markdown("**🎯 Risk Profiles**")
-    st.caption("Low • Medium • High")
-
-with stats_col3:
-    st.markdown("**📈 Live Data**")
-    st.caption("NSE • BSE • MF")
-
-with stats_col4:
-    st.markdown("**🤖 AI Powered**")
-    st.caption("LLaMA 3.3 70B")
-
-st.markdown("---")
 
 # Initialize session state
 if 'portfolio_generated' not in st.session_state:
     st.session_state.portfolio_generated = False
+if 'current_portfolio' not in st.session_state:
     st.session_state.current_portfolio = None
-if 'portfolio_history' not in st.session_state:
-    st.session_state.portfolio_history = []
-if 'comparison_mode' not in st.session_state:
-    st.session_state.comparison_mode = False
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "Portfolio Generator"
 
 # Initialize handlers
 portfolio_gen = PortfolioGenerator()
-chat_handler = ChatHandler()
+chat_handler = EnhancedChatHandler()
 market_data = IndianMarketData()
 live_market = LiveMarketData()
 visualizer = PortfolioVisualizations()
+tax_optimizer = TaxOptimizer()
+sip_calculator = SIPCalculator()
+goal_planner = GoalBasedPlanner()
 
-# Sidebar for user inputs
-with st.sidebar:
-    # Logo in sidebar if exists
-    if logo_exists:
-        st.image(str(logo_path), width=100)
-        st.markdown("---")
-    
-    st.markdown("### 📊 Investment Profile")
-    
-    # Investment Goal (NEW FEATURE)
-    investment_goal = st.selectbox(
-        "🎯 Investment Goal",
-        ["Wealth Creation", "Retirement Planning", "Child Education", "Tax Saving", "Emergency Fund"],
-        help="Select your primary investment goal"
-    )
-    
-    # Time Horizon (NEW FEATURE)
-    time_horizon = st.selectbox(
-        "⏰ Time Horizon",
-        ["Short Term (1-3 years)", "Medium Term (3-5 years)", "Long Term (5+ years)"],
-        index=2,
-        help="How long do you plan to invest?"
-    )
-    
-    st.markdown("---")
-    
-    # Capital input with visual feedback
-    capital = st.number_input(
-        "💰 Initial Capital (₹)", 
-        min_value=10000, 
-        max_value=10000000,
-        value=100000,
-        step=10000,
-        help="Your starting investment amount"
-    )
-    
-    # Show capital category
-    if capital < 50000:
-        st.caption("🌱 Beginner Investor")
-    elif capital < 500000:
-        st.caption("💼 Growing Portfolio")
-    else:
-        st.caption("🏆 Serious Investor")
-    
-    # Monthly investment
-    monthly_investment = st.number_input(
-        "📅 Monthly SIP (₹)", 
-        min_value=0, 
-        max_value=100000,
-        value=5000,
-        step=1000,
-        help="Regular monthly SIP amount"
-    )
-    
-    # Calculate total investment over time
-    total_1y = capital + (monthly_investment * 12)
-    total_5y = capital + (monthly_investment * 60)
-    
-    with st.expander("📊 Investment Summary"):
-        st.metric("1 Year Total", f"₹{total_1y:,}")
-        st.metric("5 Year Total", f"₹{total_5y:,}")
-    
-    st.markdown("---")
-    
-    # Risk appetite with enhanced visual
-    st.markdown("### 🎯 Risk Profile")
-    risk_appetite = st.select_slider(
-        "Select your risk tolerance",
-        options=['Low', 'Medium', 'High'],
-        value='Medium',
-        help="Low = 8% returns | Medium = 12% | High = 15%"
-    )
-    
-    # Enhanced risk indicator
-    risk_info = {
-        'Low': {'color': '🟢', 'desc': 'Safe & Stable', 'return': '8-10%', 'volatility': 'Low'},
-        'Medium': {'color': '🟡', 'desc': 'Balanced Growth', 'return': '10-14%', 'volatility': 'Moderate'},
-        'High': {'color': '🔴', 'desc': 'Maximum Growth', 'return': '14-18%', 'volatility': 'High'}
-    }
-    
-    info = risk_info[risk_appetite]
-    st.info(f"{info['color']} **{risk_appetite} Risk**\n\n"
-            f"📈 Expected Return: {info['return']}\n\n"
-            f"📊 Volatility: {info['volatility']}\n\n"
-            f"💡 {info['desc']}")
-    
-    st.markdown("---")
-    
-    # Investment preferences with icons
-    st.markdown("### 🎯 Asset Preferences")
-    
-    col_pref1, col_pref2 = st.columns(2)
-    with col_pref1:
-        mutual_funds = st.checkbox("💰 Mutual Funds", value=True)
-        stocks = st.checkbox("📈 Stocks", value=True)
-    
-    with col_pref2:
-        debt_funds = st.checkbox("🏦 Debt Funds", value=True)
-        bonds = st.checkbox("📋 Bonds", value=False)
-    
-    # Tax Saving Option (NEW FEATURE)
-    tax_saving = st.checkbox("💸 Include Tax Saving (ELSS)", value=False, 
-                            help="Include tax saving mutual funds under Section 80C")
-    
-    # Show selected preferences
-    selected_count = sum([mutual_funds, stocks, debt_funds, bonds])
-    if selected_count > 0:
-        st.success(f"✅ {selected_count} asset class{'es' if selected_count > 1 else ''} selected")
-    else:
-        st.error("⚠️ Select at least one asset class")
-    
-    st.markdown("---")
-    
-    # Generate portfolio button
-    generate_btn = st.button(
-        "🚀 Generate Portfolio", 
-        type="primary", 
-        use_container_width=True,
-        disabled=(selected_count == 0)
-    )
-    
-    # Portfolio comparison feature (NEW)
-    if len(st.session_state.portfolio_history) > 1:
-        if st.button("📊 Compare Portfolios", use_container_width=True):
-            st.session_state.comparison_mode = True
-    
-    # Export options (NEW)
-    st.markdown("---")
-    st.markdown("### 📤 Export Options")
-    
-    # Quick stats if portfolio exists
-    if st.session_state.portfolio_generated and st.session_state.current_portfolio:
-        portfolio = st.session_state.current_portfolio
-        
-        st.markdown("#### 💎 Portfolio Value")
-        
-        total_5y = portfolio['projected_returns']['5_year']['total_value']
-        total_invested_5y = capital + (monthly_investment * 12 * 5)
-        roi_5y = ((total_5y - total_invested_5y) / total_invested_5y * 100) if total_invested_5y > 0 else 0
-        
-        st.metric("5Y Projected", f"₹{total_5y:,.0f}", f"+{roi_5y:.1f}%")
-        
-        gains_5y = portfolio['projected_returns']['5_year']['gains']
-        st.metric("5Y Gains", f"₹{gains_5y:,.0f}")
+# Header
+st.markdown('<div class="main-header fade-in">', unsafe_allow_html=True)
+header_cols = st.columns([0.5, 2, 1.5]) if logo_exists else st.columns([2, 1.5])
 
-# Main content area
-col1, col2 = st.columns([1.8, 1.2], gap="large")
+if logo_exists:
+    with header_cols[0]:
+        st.image(str(logo_path), width=80)
+    title_col = header_cols[1]
+    market_col = header_cols[2]
+else:
+    title_col = header_cols[0]
+    market_col = header_cols[1]
 
-with col1:
-    st.markdown('<div class="fade-in">', unsafe_allow_html=True)
-    
-    # Chat section header
-    chat_header_col1, chat_header_col2 = st.columns([3, 1])
-    with chat_header_col1:
-        st.subheader("💬 Chat with CodeNCash AI")
-        st.caption("Ask anything about investments, mutual funds, stocks, or financial planning")
-    
-    with chat_header_col2:
-        if st.button("🔄 Clear Chat", use_container_width=True):
-            st.session_state.messages = []
+with title_col:
+    st.markdown('<h1 class="gradient-text" style="margin:0;">💰 CodeNCash</h1>', unsafe_allow_html=True)
+    st.markdown("*AI-Powered Investment Advisor for India*")
+
+with market_col:
+    indices = live_market.get_market_indices()
+    if indices:
+        idx_col1, idx_col2 = st.columns(2)
+        with idx_col1:
+            if 'nifty' in indices:
+                nifty = indices['nifty']
+                st.metric("NIFTY 50", f"₹{nifty['value']:,.2f}", 
+                         f"{'🟢' if nifty['change'] >= 0 else '🔴'} {nifty['change']:.2f}%")
+        with idx_col2:
+            if 'sensex' in indices:
+                sensex = indices['sensex']
+                st.metric("SENSEX", f"₹{sensex['value']:,.2f}",
+                         f"{'🟢' if sensex['change'] >= 0 else '🔴'} {sensex['change']:.2f}%")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Navigation
+st.markdown("---")
+nav_cols = st.columns(5)
+pages = ["💼 Portfolio", "💹 SIP Calculator", "💸 Tax Optimizer", "🎯 Goal Planner", "💬 AI Chat"]
+
+for idx, (col, page) in enumerate(zip(nav_cols, pages)):
+    with col:
+        if st.button(page, use_container_width=True, 
+                    type="primary" if st.session_state.current_page == page.split()[1] else "secondary"):
+            st.session_state.current_page = page.split()[1]
             st.rerun()
+
+st.markdown("---")
+
+# ==================== PORTFOLIO GENERATOR PAGE ====================
+if st.session_state.current_page == "Portfolio":
+    col1, col2 = st.columns([1, 2], gap="large")
     
-    # Initialize chat history
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
+    with col1:
+        st.subheader("📊 Investment Profile")
+        
+        # Investment inputs
+        capital = st.number_input("💰 Initial Capital (₹)", min_value=10000, value=100000, step=10000)
+        monthly_investment = st.number_input("📅 Monthly SIP (₹)", min_value=0, value=5000, step=1000)
+        
+        st.markdown("---")
+        
+        risk_appetite = st.select_slider("🎯 Risk Profile", 
+                                         options=['Low', 'Medium', 'High'], value='Medium')
+        
+        risk_info = {
+            'Low': ('🟢', 'Safe & Stable', '8-10%'),
+            'Medium': ('🟡', 'Balanced Growth', '10-14%'),
+            'High': ('🔴', 'Maximum Growth', '14-18%')
+        }
+        info = risk_info[risk_appetite]
+        st.info(f"{info[0]} **{risk_appetite} Risk**\n\n📈 Expected: {info[2]}\n\n💡 {info[1]}")
+        
+        st.markdown("---")
+        
+        st.markdown("### Asset Preferences")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            mutual_funds = st.checkbox("💰 Mutual Funds", True)
+            stocks = st.checkbox("📈 Stocks", True)
+        with col_b:
+            debt_funds = st.checkbox("🏦 Debt", True)
+            bonds = st.checkbox("📋 Bonds", False)
+        
+        if st.button("🚀 Generate Portfolio", type="primary", use_container_width=True):
+            preferences = {
+                "mutual_funds": mutual_funds, "stocks": stocks,
+                "debt_funds": debt_funds, "bonds": bonds
+            }
+            
+            if any(preferences.values()):
+                with st.spinner("Generating portfolio..."):
+                    portfolio = portfolio_gen.generate_portfolio(
+                        capital, monthly_investment, risk_appetite, preferences
+                    )
+                    st.session_state.current_portfolio = portfolio
+                    st.session_state.portfolio_generated = True
+                st.success("✅ Portfolio Generated!")
+                st.balloons()
+            else:
+                st.error("Select at least one asset class")
     
-    # Enhanced suggested questions
-    if len(st.session_state.messages) == 0:
-        st.markdown("**💡 Quick Start Questions:**")
+    with col2:
+        st.subheader("📈 Your Portfolio")
         
-        suggestions = [
-            ("🎯", "What are the best mutual funds for beginners?"),
-            ("💰", "How does SIP investment work in India?"),
-            ("📊", "Difference between debt and equity funds"),
-            ("🏆", "Best retirement planning strategy"),
-            ("💸", "Tax saving investment options in India"),
-            ("📈", "How to build a diversified portfolio")
-        ]
+        if st.session_state.portfolio_generated:
+            portfolio = st.session_state.current_portfolio
+            
+            # Metrics
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("💰 Capital", f"₹{portfolio['total_investment']:,}")
+            m2.metric("📅 Monthly SIP", f"₹{portfolio['monthly_sip']:,}")
+            m3.metric("🎯 Risk", portfolio['risk_level'])
+            one_yr = portfolio['projected_returns']['1_year']['gains']
+            m4.metric("📈 1Y Return", f"{(one_yr/portfolio['total_investment']*100):.1f}%")
+            
+            st.markdown("---")
+            
+            # PDF Download
+            from utils.pdf_generator import generate_portfolio_pdf
+            try:
+                pdf_data = generate_portfolio_pdf(portfolio)
+                st.download_button("📄 Download Report", pdf_data,
+                                  f"CodeNCash_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                  "application/pdf", use_container_width=True)
+            except:
+                pass
+            
+            # Tabs
+            tab1, tab2, tab3 = st.tabs(["📊 Allocation", "📈 Returns", "💼 Assets"])
+            
+            with tab1:
+                fig_pie = visualizer.create_allocation_pie_chart(portfolio['allocation'], "Asset Allocation")
+                st.plotly_chart(fig_pie, use_container_width=True)
+                
+                if portfolio['recommendations']:
+                    fig_dist = visualizer.create_diversification_chart(portfolio['recommendations'])
+                    st.plotly_chart(fig_dist, use_container_width=True)
+            
+            with tab2:
+                fig_returns = visualizer.create_returns_chart(
+                    portfolio['projected_returns'], portfolio['total_investment'], portfolio['monthly_sip']
+                )
+                st.plotly_chart(fig_returns, use_container_width=True)
+                
+                fig_gains = visualizer.create_gains_bar_chart(portfolio['projected_returns'])
+                st.plotly_chart(fig_gains, use_container_width=True)
+            
+            with tab3:
+                if 'stocks' in portfolio['recommendations']:
+                    with st.expander(f"📈 Stocks (₹{portfolio['recommendations']['stocks']['amount']:,.0f})", True):
+                        for stock in portfolio['recommendations']['stocks']['list'][:5]:
+                            cols = st.columns([3, 2])
+                            cols[0].markdown(f"**{stock['symbol']}** - {stock['name'][:25]}")
+                            cols[1].caption(stock['sector'])
+                            st.markdown("---")
+                
+                if 'mutual_funds' in portfolio['recommendations']:
+                    with st.expander(f"💰 Mutual Funds (₹{portfolio['recommendations']['mutual_funds']['amount']:,.0f})"):
+                        for mf in portfolio['recommendations']['mutual_funds']['list'][:3]:
+                            st.markdown(f"**{mf['name']}**")
+                            st.caption(f"{mf['category']} | Returns: {mf['returns_3y']}")
+                            st.markdown("---")
+        else:
+            st.info("👈 Configure your profile and generate portfolio")
+
+# ==================== SIP CALCULATOR PAGE ====================
+elif st.session_state.current_page == "SIP":
+    st.subheader("💹 Advanced SIP Calculator")
+    
+    calc_tab1, calc_tab2, calc_tab3 = st.tabs(["📊 Basic SIP", "🎯 Goal-Based", "📈 Scenarios"])
+    
+    with calc_tab1:
+        col1, col2 = st.columns([1, 2])
         
-        # Create 2 columns for suggestions
-        for i in range(0, len(suggestions), 2):
-            cols = st.columns(2)
-            for j, col in enumerate(cols):
-                if i + j < len(suggestions):
-                    icon, text = suggestions[i + j]
-                    with col:
-                        display_text = text if len(text) <= 35 else text[:32] + "..."
-                        if st.button(f"{icon} {display_text}", key=f"suggest_{i+j}", use_container_width=True):
-                            st.session_state.messages.append({"role": "user", "content": text})
-                            
-                            context = ""
-                            if st.session_state.current_portfolio:
-                                context = f"User profile: {risk_appetite} risk, ₹{capital} capital, Goal: {investment_goal}"
-                            
-                            response = chat_handler.get_response(text, context)
-                            st.session_state.messages.append({"role": "assistant", "content": response})
-                            st.rerun()
+        with col1:
+            st.markdown("#### Calculator")
+            sip_amount = st.number_input("Monthly SIP (₹)", 1000, 100000, 10000, 1000)
+            years = st.slider("Investment Period (Years)", 1, 30, 10)
+            returns = st.slider("Expected Returns (%)", 5, 20, 12)
+            step_up = st.slider("Annual Step-up (%)", 0, 20, 0)
+            
+            if st.button("Calculate SIP", type="primary", use_container_width=True):
+                result = sip_calculator.calculate_sip(sip_amount, years, returns, step_up)
+                
+                st.success(f"**Final Value:** ₹{result['final_value']:,.0f}")
+                st.info(f"**Total Invested:** ₹{result['total_invested']:,.0f}")
+                st.success(f"**Total Gains:** ₹{result['total_gains']:,.0f}")
+                st.metric("ROI", f"{result['absolute_return']:.1f}%")
+        
+        with col2:
+            if 'result' in locals():
+                st.markdown("#### Growth Visualization")
+                
+                # Create growth chart
+                df = pd.DataFrame(result['monthly_data'])
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df['month'], y=df['invested'], 
+                                        name='Invested', mode='lines', fill='tozeroy'))
+                fig.add_trace(go.Scatter(x=df['month'], y=df['value'],
+                                        name='Value', mode='lines', fill='tonexty'))
+                fig.update_layout(title="SIP Growth Over Time", xaxis_title="Months",
+                                 yaxis_title="Amount (₹)", height=400)
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Yearly summary
+                st.markdown("#### Year-wise Summary")
+                yearly_df = pd.DataFrame(result['yearly_summary'])
+                st.dataframe(yearly_df, use_container_width=True)
+    
+    with calc_tab2:
+        st.markdown("#### Goal-Based SIP Calculator")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            target = st.number_input("Target Amount (₹)", 100000, 10000000, 1000000, 100000)
+            goal_years = st.slider("Time to Goal (Years)", 1, 30, 10)
+            goal_returns = st.slider("Expected Returns (%)", 5, 20, 12)
+        
+        with col2:
+            if st.button("Calculate Required SIP", type="primary"):
+                goal_result = sip_calculator.calculate_goal_based_sip(target, goal_years, goal_returns)
+                
+                st.success(f"### ₹{goal_result['required_monthly_sip']:,.0f}/month")
+                st.info(f"**Total Investment:** ₹{goal_result['total_invested']:,.0f}")
+                st.caption(f"To reach ₹{target:,.0f} in {goal_years} years")
+    
+    with calc_tab3:
+        st.markdown("#### Compare Scenarios")
+        
+        scenario_sip = st.number_input("Monthly SIP for Comparison (₹)", 1000, 100000, 10000, 1000)
+        scenario_years = st.slider("Years for Comparison", 1, 30, 10)
+        
+        if st.button("Compare Scenarios", type="primary"):
+            scenarios = sip_calculator.compare_scenarios(scenario_sip, scenario_years)
+            
+            # Create comparison chart
+            scenario_df = pd.DataFrame([
+                {'Scenario': k, 'Value': v['final_value'], 'Returns': v['return_rate']}
+                for k, v in scenarios.items()
+            ])
+            
+            fig = px.bar(scenario_df, x='Scenario', y='Value', color='Returns',
+                        title="Scenario Comparison", text='Value')
+            fig.update_traces(texttemplate='₹%{text:,.0f}', textposition='outside')
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Details table
+            st.dataframe(pd.DataFrame(scenarios).T, use_container_width=True)
+
+# ==================== TAX OPTIMIZER PAGE ====================
+elif st.session_state.current_page == "Tax":
+    st.subheader("💸 Tax Optimizer")
+    
+    tax_tab1, tax_tab2, tax_tab3 = st.tabs(["🧮 Calculator", "💡 80C Planner", "🏠 Home Loan"])
+    
+    with tax_tab1:
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.markdown("#### Your Income")
+            annual_income = st.number_input("Annual Gross Income (₹)", 0, 10000000, 1000000, 50000)
+            
+            st.markdown("#### Deductions (Old Regime)")
+            deductions = {}
+            deductions['80c'] = st.number_input("Section 80C (max ₹1.5L)", 0, 150000, 0, 10000)
+            deductions['80ccd_1b'] = st.number_input("NPS - 80CCD(1B) (max ₹50k)", 0, 50000, 0, 10000)
+            deductions['80d'] = st.number_input("Health Insurance - 80D", 0, 25000, 0, 5000)
+            deductions['80d_parents'] = st.number_input("Parents Insurance (Sr. Citizen)", 0, 50000, 0, 5000)
+            deductions['24b'] = st.number_input("Home Loan Interest", 0, 200000, 0, 10000)
+            deductions['hra'] = st.number_input("HRA Exemption", 0, 500000, 0, 10000)
+            
+            if st.button("Compare Tax Regimes", type="primary", use_container_width=True):
+                comparison = tax_optimizer.compare_regimes(annual_income, deductions)
+                
+                st.session_state.tax_comparison = comparison
+        
+        with col2:
+            if 'tax_comparison' in st.session_state:
+                comp = st.session_state.tax_comparison
+                
+                st.markdown("#### Tax Comparison")
+                
+                # Metrics
+                col_new, col_old = st.columns(2)
+                with col_new:
+                    st.metric("New Regime Tax", f"₹{comp['new_regime']['total_tax']:,.0f}")
+                    st.caption(f"Effective Rate: {comp['new_regime']['effective_rate']:.1f}%")
+                
+                with col_old:
+                    st.metric("Old Regime Tax", f"₹{comp['old_regime']['total_tax']:,.0f}")
+                    st.caption(f"Effective Rate: {comp['old_regime']['effective_rate']:.1f}%")
+                
+                # Recommendation
+                if comp['better_regime'] == 'Old Regime':
+                    st.success(f"✅ {comp['recommendation']}")
+                else:
+                    st.info(f"💡 {comp['recommendation']}")
+                
+                # Visualization
+                fig = go.Figure(data=[
+                    go.Bar(name='New Regime', x=['Tax'], y=[comp['new_regime']['total_tax']]),
+                    go.Bar(name='Old Regime', x=['Tax'], y=[comp['old_regime']['total_tax']])
+                ])
+                fig.update_layout(title="Tax Comparison", yaxis_title="Tax Amount (₹)")
+                st.plotly_chart(fig, use_container_width=True)
+    
+    with tax_tab2:
+        st.markdown("#### Section 80C Investment Planner")
+        
+        current_80c = st.number_input("Current 80C Investments (₹)", 0, 150000, 0, 10000)
+        
+        suggestions = tax_optimizer.suggest_investments_for_80c(current_80c)
+        
+        if suggestions['status'] == 'optimized':
+            st.success(suggestions['message'])
+        else:
+            st.warning(suggestions['message'])
+            st.info(f"Potential Tax Savings: ₹{suggestions['potential_savings']:,.0f}")
+            
+            st.markdown("#### Recommended Options")
+            for suggestion in suggestions['suggestions']:
+                with st.expander(f"{suggestion['option']} - Priority: {suggestion['priority']}"):
+                    st.write(f"**Suggested Amount:** ₹{suggestion['amount']:,.0f}")
+                    st.write(f"**Benefit:** {suggestion['benefit']}")
+                    st.write(f"**Lock-in Period:** {suggestion['lock_in']}")
+    
+    with tax_tab3:
+        st.markdown("#### Home Loan Tax Benefits")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            interest_paid = st.number_input("Interest Paid (Annual)", 0, 500000, 0, 10000)
+            principal_paid = st.number_input("Principal Repaid (Annual)", 0, 500000, 0, 10000)
+        
+        with col2:
+            if st.button("Calculate Benefits", type="primary"):
+                benefits = tax_optimizer.calculate_home_loan_benefit(interest_paid, principal_paid)
+                
+                st.success(f"**Total Tax Benefit:** ₹{benefits['total_benefit']:,.0f}")
+                st.info(f"**Tax Saved:** ₹{benefits['tax_saved']:,.0f}")
+                
+                st.markdown("**Breakdown:**")
+                st.write(f"- Interest Deduction (24B): ₹{benefits['interest_deduction']:,.0f}")
+                st.write(f"- Principal Deduction (80C): ₹{benefits['principal_deduction']:,.0f}")
+                st.caption(benefits['note'])
+
+# ==================== GOAL PLANNER PAGE ====================
+elif st.session_state.current_page == "Goal":
+    st.subheader("🎯 Goal-Based Financial Planning")
+    
+    goal_type = st.selectbox("Select Goal", 
+                            ["Retirement", "Child Education", "Home Purchase", 
+                             "Emergency Fund", "Wedding", "Vacation"])
+    
+    st.markdown("---")
+    
+    if goal_type == "Retirement":
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            current_age = st.number_input("Current Age", 20, 60, 30)
+            retirement_age = st.number_input("Retirement Age", 40, 75, 60)
+            monthly_expenses = st.number_input("Current Monthly Expenses (₹)", 10000, 500000, 50000)
+            existing_corpus = st.number_input("Existing Retirement Fund (₹)", 0, 10000000, 0)
+            
+            if st.button("Plan Retirement", type="primary", use_container_width=True):
+                result = goal_planner.retirement_planning(
+                    current_age, retirement_age, monthly_expenses, 85, existing_corpus
+                )
+                st.session_state.retirement_plan = result
+        
+        with col2:
+            if 'retirement_plan' in st.session_state:
+                plan = st.session_state.retirement_plan
+                
+                st.markdown("#### Retirement Plan")
+                
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Required Corpus", f"₹{plan['required_corpus']/10000000:.2f}Cr")
+                m2.metric("Monthly SIP", f"₹{plan['required_monthly_sip']:,.0f}")
+                m3.metric("Years to Go", plan['years_to_retirement'])
+                
+                st.info(plan['recommendation'])
+                
+                # Breakdown
+                st.markdown("**Details:**")
+                st.write(f"- Current Monthly Expenses: ₹{plan['current_monthly_expenses']:,.0f}")
+                st.write(f"- Future Monthly Expenses: ₹{plan['future_monthly_expenses']:,.0f}")
+                st.write(f"- Retirement Duration: {plan['retirement_duration']} years")
+                st.write(f"- Shortfall to Cover: ₹{plan['shortfall']:,.0f}")
+    
+    elif goal_type == "Child Education":
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            child_age = st.number_input("Child's Current Age", 0, 18, 5)
+            edu_start_age = st.number_input("Education Start Age", 15, 25, 18)
+            course_cost = st.number_input("Course Cost Today (₹)", 100000, 10000000, 2000000)
+            edu_savings = st.number_input("Existing Education Fund (₹)", 0, 5000000, 0)
+            
+            if st.button("Plan Education", type="primary", use_container_width=True):
+                result = goal_planner.child_education_planning(
+                    child_age, edu_start_age, course_cost, edu_savings
+                )
+                st.session_state.education_plan = result
+        
+        with col2:
+            if 'education_plan' in st.session_state:
+                plan = st.session_state.education_plan
+                
+                if 'error' not in plan:
+                    st.markdown("#### Education Plan")
+                    
+                    m1, m2 = st.columns(2)
+                    m1.metric("Future Cost", f"₹{plan['future_course_cost']/100000:.2f}L")
+                    m2.metric("Required SIP", f"₹{plan['required_monthly_sip']:,.0f}")
+                    
+                    st.info(plan['recommendation'])
+                    
+                    st.write(f"**Years to Goal:** {plan['years_to_goal']}")
+                    st.write(f"**Education Inflation:** {plan['education_inflation_rate']}%")
+                    st.write(f"**Alternative: Invest ₹{plan['required_lumpsum']:,.0f} today**")
+    
+    elif goal_type == "Emergency Fund":
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            monthly_exp = st.number_input("Monthly Expenses (₹)", 10000, 200000, 50000)
+            coverage = st.slider("Months of Coverage", 3, 12, 6)
+            existing_fund = st.number_input("Existing Emergency Fund (₹)", 0, 1000000, 0)
+            
+            if st.button("Plan Emergency Fund", type="primary", use_container_width=True):
+                result = goal_planner.emergency_fund_planning(monthly_exp, coverage, existing_fund)
+                st.session_state.emergency_plan = result
+        
+        with col2:
+            if 'emergency_plan' in st.session_state:
+                plan = st.session_state.emergency_plan
+                
+                st.markdown("#### Emergency Fund Plan")
+                
+                status_color = "success" if plan['status'] == 'Adequate' else "warning"
+                getattr(st, status_color)(f"Status: {plan['status']}")
+                
+                m1, m2 = st.columns(2)
+                m1.metric("Required Fund", f"₹{plan['required_corpus']:,.0f}")
+                m2.metric("Monthly Saving", f"₹{plan['required_monthly_saving']:,.0f}")
+                
+                st.info(plan['recommendation'])
+                
+                st.markdown("**Recommended Allocation:**")
+                for option, details in plan['allocation'].items():
+                    st.write(f"- {option}: ₹{details['amount']:,.0f} ({details['percent']}%)")
+                    st.caption(f"Liquidity: {details['liquidity']}")
+
+# ==================== AI CHAT PAGE ====================
+else:  # AI Chat
+    st.subheader("💬 AI Investment Advisor")
+    
+    # File upload section
+    with st.expander("📎 Upload Files/Images", expanded=False):
+        uploaded_files = st.file_uploader(
+            "Upload portfolio files (CSV, Excel, PDF, TXT)",
+            type=['csv', 'xlsx', 'xls', 'pdf', 'txt'],
+            accept_multiple_files=True
+        )
+        
+        uploaded_images = st.file_uploader(
+            "Upload investment screenshots/documents",
+            type=['png', 'jpg', 'jpeg'],
+            accept_multiple_files=True
+        )
+        
+        if uploaded_files or uploaded_images:
+            st.success(f"✅ {len(uploaded_files or [])} files + {len(uploaded_images or [])} images uploaded")
     
     # Chat container
     chat_container = st.container(height=500, border=True)
@@ -320,7 +535,7 @@ with col1:
                 st.markdown(message["content"])
     
     # Chat input
-    if prompt := st.chat_input("💬 Ask me anything about investments..."):
+    if prompt := st.chat_input("Ask about investments, upload files for analysis..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with chat_container:
@@ -329,287 +544,32 @@ with col1:
             
             with st.chat_message("assistant", avatar="🤖"):
                 with st.spinner("🤔 Analyzing..."):
-                    context = f"User profile: {risk_appetite} risk, ₹{capital} capital, {time_horizon}, Goal: {investment_goal}"
-                    if st.session_state.current_portfolio:
-                        context += f"\nCurrent portfolio generated with {selected_count} asset classes"
+                    context = ""
+                    if st.session_state.portfolio_generated:
+                        portfolio = st.session_state.current_portfolio
+                        context = f"User portfolio: {portfolio['risk_level']} risk, ₹{portfolio['total_investment']} capital"
                     
-                    response = chat_handler.get_response(prompt, context)
+                    # Get response with file context
+                    response = chat_handler.get_response(
+                        prompt, context,
+                        files=uploaded_files if 'uploaded_files' in locals() else None,
+                        images=uploaded_images if 'uploaded_images' in locals() else None
+                    )
                 
                 st.markdown(response)
         
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
     
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with col2:
-    st.markdown('<div class="slide-up">', unsafe_allow_html=True)
-    st.subheader("📊 Portfolio Dashboard")
-    
-    # Generate portfolio
-    if generate_btn:
-        preferences = {
-            "mutual_funds": mutual_funds,
-            "stocks": stocks,
-            "debt_funds": debt_funds,
-            "bonds": bonds,
-            "tax_saving": tax_saving
-        }
-        
-        if not any([mutual_funds, stocks, debt_funds, bonds]):
-            st.error("❌ Please select at least one asset class!")
-        else:
-            # Enhanced progress animation
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            status_messages = [
-                ("🔍", "Analyzing market conditions...", 20),
-                ("📊", "Calculating optimal allocation...", 40),
-                ("🎯", "Selecting best instruments...", 60),
-                ("💼", "Building your portfolio...", 80),
-                ("✨", "Finalizing recommendations...", 100)
-            ]
-            
-            for icon, msg, progress in status_messages:
-                status_text.markdown(f"{icon} {msg}")
-                progress_bar.progress(progress)
-                time.sleep(0.3)
-            
-            portfolio = portfolio_gen.generate_portfolio(
-                capital, monthly_investment, risk_appetite, preferences
-            )
-            
-            # Add metadata
-            portfolio['goal'] = investment_goal
-            portfolio['time_horizon'] = time_horizon
-            portfolio['tax_saving'] = tax_saving
-            portfolio['generated_at'] = datetime.now()
-            
-            progress_bar.empty()
-            status_text.empty()
-            
-            st.session_state.current_portfolio = portfolio
-            st.session_state.portfolio_generated = True
-            st.session_state.portfolio_history.append(portfolio)
-            
-            st.success("✅ Portfolio Generated Successfully!")
-            st.balloons()
-    
-    # Display portfolio
-    if st.session_state.portfolio_generated and st.session_state.current_portfolio:
-        portfolio = st.session_state.current_portfolio
-        
-        # Investment summary
-        st.markdown("#### 💼 Investment Summary")
-        
-        metric_col1, metric_col2 = st.columns(2)
-        with metric_col1:
-            st.metric("💰 Capital", f"₹{portfolio['total_investment']:,}")
-            st.metric("📅 Monthly SIP", f"₹{portfolio['monthly_sip']:,}")
-        
-        with metric_col2:
-            st.metric("🎯 Risk", portfolio['risk_level'])
-            one_year_return = portfolio['projected_returns']['1_year']['gains']
-            return_pct = (one_year_return / portfolio['total_investment']) * 100
-            st.metric("📈 1Y Return", f"{return_pct:.1f}%")
-        
-        st.markdown("---")
-        
-        # PDF Download
-        from utils.pdf_generator import generate_portfolio_pdf
-        
-        try:
-            pdf_col1, pdf_col2 = st.columns([3, 1])
-            
-            with pdf_col1:
-                pdf_data = generate_portfolio_pdf(portfolio)
-                st.download_button(
-                    label="📄 Download Portfolio Report",
-                    data=pdf_data,
-                    file_name=f"CodeNCash_Portfolio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                    mime="application/pdf",
-                    type="primary",
-                    use_container_width=True
-                )
-            
-            with pdf_col2:
-                if st.button("🔄", help="Regenerate", use_container_width=True):
-                    st.rerun()
-                    
-        except Exception as e:
-            st.error(f"❌ PDF Error: {str(e)}")
-        
-        # Tabs
-        tab1, tab2, tab3, tab4 = st.tabs(["📊 Allocation", "📈 Returns", "💼 Assets", "📋 Summary"])
-        
-        with tab1:
-            fig_pie = visualizer.create_allocation_pie_chart(
-                portfolio['allocation'],
-                "Asset Allocation Strategy"
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-            
-            if portfolio['recommendations']:
-                fig_dist = visualizer.create_diversification_chart(portfolio['recommendations'])
-                st.plotly_chart(fig_dist, use_container_width=True)
-        
-        with tab2:
-            fig_returns = visualizer.create_returns_chart(
-                portfolio['projected_returns'],
-                portfolio['total_investment'],
-                portfolio['monthly_sip']
-            )
-            st.plotly_chart(fig_returns, use_container_width=True)
-            
-            fig_gains = visualizer.create_gains_bar_chart(portfolio['projected_returns'])
-            st.plotly_chart(fig_gains, use_container_width=True)
-        
-        with tab3:
-            st.markdown("#### 🎯 Recommended Assets")
-            
-            if portfolio['recommendations']:
-                # Stocks
-                if 'stocks' in portfolio['recommendations']:
-                    with st.expander(f"📈 Stocks (₹{portfolio['recommendations']['stocks']['amount']:,.0f})", expanded=True):
-                        stocks_list = portfolio['recommendations']['stocks']['list']
-                        enriched_stocks = live_market.enrich_stock_data(stocks_list)
-                        
-                        for stock in enriched_stocks:
-                            cols = st.columns([3, 2, 2])
-                            
-                            with cols[0]:
-                                st.markdown(f"**{stock['symbol']}**")
-                                st.caption(f"{stock['name'][:25]} | {stock['sector']}")
-                            
-                            with cols[1]:
-                                if 'live_price' in stock:
-                                    st.markdown(f"<span class='live-indicator'></span>₹{stock['live_price']}", unsafe_allow_html=True)
-                                    st.caption("Live Price")
-                            
-                            with cols[2]:
-                                if 'change_percent' in stock:
-                                    change = stock['change_percent']
-                                    color = "🟢" if change >= 0 else "🔴"
-                                    st.markdown(f"{color} {change:+.2f}%")
-                                    st.caption("Today")
-                            
-                            st.markdown("---")
-                
-                # Mutual Funds
-                if 'mutual_funds' in portfolio['recommendations']:
-                    with st.expander(f"💰 Mutual Funds (₹{portfolio['recommendations']['mutual_funds']['amount']:,.0f})"):
-                        mf_list = portfolio['recommendations']['mutual_funds']['list']
-                        
-                        for mf in mf_list:
-                            mf['scheme_code'] = POPULAR_SCHEME_CODES.get(mf['name'])
-                        
-                        enriched_funds = live_market.enrich_fund_data(mf_list)
-                        
-                        for mf in enriched_funds:
-                            cols = st.columns([3, 2])
-                            
-                            with cols[0]:
-                                st.markdown(f"**{mf['name'][:30]}**")
-                                st.caption(f"{mf['category']} | Returns: {mf['returns_3y']}")
-                            
-                            with cols[1]:
-                                if 'current_nav' in mf:
-                                    st.markdown(f"NAV: ₹{mf['current_nav']}")
-                                    st.caption(f"{mf.get('nav_date', 'N/A')}")
-                            
-                            st.markdown("---")
-                
-                # Debt
-                if 'debt' in portfolio['recommendations']:
-                    with st.expander(f"🏦 Debt (₹{portfolio['recommendations']['debt']['amount']:,.0f})"):
-                        for debt in portfolio['recommendations']['debt']['list']:
-                            cols = st.columns([3, 2])
-                            
-                            with cols[0]:
-                                st.markdown(f"**{debt['name'][:25]}**")
-                                st.caption(f"Type: {debt['type']}")
-                            
-                            with cols[1]:
-                                st.markdown(f"**{debt.get('interest_rate', 'N/A')}**")
-                                st.caption("Interest Rate")
-                            
-                            st.markdown("---")
-        
-        with tab4:
-            st.markdown("#### 📋 Portfolio Summary")
-            
-            st.markdown(f"""
-            - **Investment Goal:** {portfolio.get('goal', 'Wealth Creation')}
-            - **Time Horizon:** {portfolio.get('time_horizon', 'Long Term')}
-            - **Risk Profile:** {portfolio['risk_level']}
-            - **Asset Classes:** {len(portfolio.get('recommendations', {}))}
-            - **Tax Saving:** {'Yes' if portfolio.get('tax_saving') else 'No'}
-            """)
-            
-            st.markdown("---")
-            st.markdown("**📈 Performance Metrics**")
-            
-            for period, values in portfolio['projected_returns'].items():
-                year = period.replace('_', ' ').title()
-                total = values['total_value']
-                gains = values['gains']
-                roi = (gains / portfolio['total_investment'] * 100) if portfolio['total_investment'] > 0 else 0
-                
-                with st.expander(f"**{year}** - ROI: {roi:.1f}%"):
-                    col1, col2, col3 = st.columns(3)
-                    col1.metric("Total Value", f"₹{total:,.0f}")
-                    col2.metric("Gains", f"₹{gains:,.0f}")
-                    col3.metric("ROI", f"{roi:.1f}%")
-    
-    else:
-        # Welcome screen
-        st.markdown("""
-        <div style='background: linear-gradient(135deg, rgba(0, 102, 255, 0.2) 0%, rgba(0, 217, 163, 0.2) 100%); 
-                    padding: 2rem; border-radius: 20px; text-align: center; margin: 2rem 0;
-                    border: 2px solid rgba(0, 217, 163, 0.5);'>
-            <h2 style='color: #00D9A3; margin-bottom: 1rem;'>🚀 Ready to Build Your Portfolio?</h2>
-            <p style='color: #A0AEC0; font-size: 16px;'>
-                Fill in your investment details on the left<br/>
-                and click <strong style='color: #0066FF;'>Generate Portfolio</strong>
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("### ✨ What Makes CodeNCash Special")
-        
-        features = [
-            ("🤖", "AI-Powered Analysis", "LLaMA 3.3 70B for intelligent recommendations"),
-            ("📊", "Live Market Data", "Real-time prices from NSE, BSE & MFapi"),
-            ("🎯", "Personalized Strategy", "Tailored to your risk & goals"),
-            ("📈", "Growth Projections", "1, 3 & 5 year forecasts"),
-            ("💼", "Diversified Portfolio", "Across equity, debt & hybrid"),
-            ("📄", "Professional Reports", "Downloadable PDF with charts")
-        ]
-        
-        for icon, title, desc in features:
-            st.markdown(f"""
-            <div style='background: rgba(21, 27, 61, 0.8); padding: 1.2rem; border-radius: 12px; 
-                        margin-bottom: 0.8rem; border-left: 4px solid #0066FF; backdrop-filter: blur(10px);'>
-                <span style='font-size: 28px; float: left; margin-right: 15px;'>{icon}</span>
-                <div>
-                    <strong style='color: #00D9A3; font-size: 16px;'>{title}</strong><br/>
-                    <span style='color: #A0AEC0; font-size: 14px;'>{desc}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Clear chat button
+    if st.button("🔄 Clear Chat History"):
+        st.session_state.messages = []
+        chat_handler.clear_history()
+        st.rerun()
 
 # Footer
 st.markdown("---")
-footer_col1, footer_col2, footer_col3 = st.columns(3)
-
-with footer_col1:
-    st.caption("💼 **CodeNCash** - AI Investment Advisor")
-    
-with footer_col2:
-    st.caption("⚠️ For educational purposes. Consult a certified advisor.")
-
-with footer_col3:
-    st.caption(f"🕒 {datetime.now().strftime('%d %b %Y | %H:%M:%S')}")
+footer_cols = st.columns(3)
+footer_cols[0].caption("💼 **CodeNCash** - AI Investment Advisor")
+footer_cols[1].caption("⚠️ For educational purposes. Consult certified advisors.")
+footer_cols[2].caption(f"🕒 {datetime.now().strftime('%d %b %Y | %H:%M')}")
