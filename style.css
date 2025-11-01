@@ -1,7 +1,7 @@
-/* Custom CSS for Finbot - Modern Financial Theme */
+/* Custom CSS for CodeNCash - Modern Financial Theme */
 
 /* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap');
 
 /* Root Variables - Professional Finance Theme */
 :root {
@@ -28,115 +28,251 @@
     background: linear-gradient(135deg, #0A0E27 0%, #151B3D 100%);
 }
 
-/* Hide Streamlit Branding */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+/* CRITICAL: Hide ALL Streamlit branding and default headers */
+#MainMenu {visibility: hidden !important;}
+footer {visibility: hidden !important;}
+header {visibility: hidden !important;}
+.stDeployButton {display: none !important;}
+[data-testid="stToolbar"] {display: none !important;}
+[data-testid="stDecoration"] {display: none !important;}
+[data-testid="stStatusWidget"] {display: none !important;}
 
-/* Custom Header */
+/* Remove the top padding that causes the blue bar */
+.stApp > header {
+    background-color: transparent !important;
+    display: none !important;
+}
+
+.main .block-container {
+    padding-top: 1rem !important;
+    padding-bottom: 2rem;
+}
+
+/* Custom Header with Logo */
 .main-header {
-    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-    padding: 2rem;
-    border-radius: 15px;
+    background: linear-gradient(135deg, #0A0E27 0%, #1a237e 50%, #0A0E27 100%);
+    padding: 1.5rem 2rem;
+    border-radius: 20px;
     margin-bottom: 2rem;
-    box-shadow: 0 10px 30px rgba(0, 102, 255, 0.3);
+    box-shadow: 0 15px 40px rgba(0, 102, 255, 0.4);
+    border: 1px solid rgba(0, 217, 163, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.main-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(0, 217, 163, 0.1) 0%, transparent 70%);
+    animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.logo-image {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 102, 255, 0.5);
 }
 
 /* Sidebar Styling */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-dark) 100%);
-    border-right: 1px solid var(--border-color);
+    background: linear-gradient(180deg, #0A0E27 0%, #151B3D 100%);
+    border-right: 2px solid var(--border-color);
 }
 
 section[data-testid="stSidebar"] .block-container {
     padding-top: 2rem;
 }
 
-/* Input Fields */
+section[data-testid="stSidebar"] > div:first-child {
+    background: linear-gradient(180deg, #151B3D 0%, #0A0E27 100%);
+}
+
+/* Sidebar Header */
+section[data-testid="stSidebar"] h3 {
+    color: var(--secondary-color) !important;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    text-align: center;
+    padding: 1rem 0;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+/* Input Fields - Enhanced */
 .stNumberInput > div > div > input,
 .stTextInput > div > div > input,
 .stSelectbox > div > div > select {
-    background-color: var(--bg-card) !important;
+    background: linear-gradient(135deg, var(--bg-card) 0%, #1a1f3a 100%) !important;
     border: 2px solid var(--border-color) !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
     color: var(--text-primary) !important;
     font-size: 16px !important;
+    font-weight: 500 !important;
     transition: all 0.3s ease;
+    padding: 0.75rem !important;
 }
 
 .stNumberInput > div > div > input:focus,
 .stTextInput > div > div > input:focus,
 .stSelectbox > div > div > select:focus {
     border-color: var(--primary-color) !important;
-    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.2) !important;
+    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.3) !important;
+    background: var(--bg-dark) !important;
+    transform: translateY(-2px);
 }
 
-/* Buttons */
+.stNumberInput > div > div > input:hover,
+.stTextInput > div > div > input:hover,
+.stSelectbox > div > div > select:hover {
+    border-color: var(--secondary-color) !important;
+}
+
+/* Buttons - Enhanced with Pulse Animation */
 .stButton > button {
-    background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, #1a73e8 100%);
     color: white;
     border: none;
-    border-radius: 10px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
+    border-radius: 12px;
+    padding: 0.85rem 2rem;
+    font-weight: 700;
     font-size: 16px;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 102, 255, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 102, 255, 0.5);
+    position: relative;
+    overflow: hidden;
+}
+
+.stButton > button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.stButton > button:hover::before {
+    width: 300px;
+    height: 300px;
 }
 
 .stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 102, 255, 0.6);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0, 102, 255, 0.7);
 }
 
 .stButton > button:active {
-    transform: translateY(0);
+    transform: translateY(-1px);
 }
 
-/* Metric Cards */
+.stButton > button:disabled {
+    background: linear-gradient(135deg, #4A5568 0%, #2D3748 100%);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Download Button Special Styling */
+.stDownloadButton > button {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, #00b386 100%) !important;
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 6px 20px rgba(0, 217, 163, 0.5); }
+    50% { box-shadow: 0 6px 30px rgba(0, 217, 163, 0.8); }
+}
+
+/* Metric Cards - Enhanced with Glassmorphism */
 div[data-testid="stMetric"] {
-    background: var(--bg-card);
+    background: rgba(21, 27, 61, 0.7);
+    backdrop-filter: blur(10px);
     padding: 1.5rem;
     border-radius: 15px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 217, 163, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+div[data-testid="stMetric"]::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 217, 163, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+div[data-testid="stMetric"]:hover::before {
+    left: 100%;
 }
 
 div[data-testid="stMetric"]:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 102, 255, 0.3);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 12px 40px rgba(0, 102, 255, 0.4);
     border-color: var(--primary-color);
 }
 
 div[data-testid="stMetric"] label {
     color: var(--text-secondary) !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
 }
 
 div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
     color: var(--text-primary) !important;
     font-size: 32px !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
+    font-family: 'Poppins', sans-serif;
 }
 
-/* Chat Container */
+/* Chat Container - Enhanced */
 .stChatMessage {
-    background: var(--bg-card) !important;
+    background: rgba(21, 27, 61, 0.8) !important;
+    backdrop-filter: blur(10px) !important;
     border: 1px solid var(--border-color) !important;
     border-radius: 15px !important;
-    padding: 1rem !important;
+    padding: 1.2rem !important;
     margin: 0.5rem 0 !important;
-    animation: slideIn 0.3s ease;
+    animation: slideInMessage 0.4s ease;
+    transition: all 0.3s ease;
 }
 
-@keyframes slideIn {
+.stChatMessage:hover {
+    transform: translateX(5px);
+    border-color: var(--primary-color) !important;
+}
+
+@keyframes slideInMessage {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(20px);
     }
     to {
         opacity: 1;
@@ -145,60 +281,164 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
 }
 
 .stChatMessage[data-testid="user-message"] {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
-    border-color: var(--primary-color) !important;
+    background: linear-gradient(135deg, rgba(0, 102, 255, 0.3) 0%, rgba(0, 102, 255, 0.1) 100%) !important;
+    border-left: 4px solid var(--primary-color) !important;
 }
 
-/* Expander */
-.streamlit-expanderHeader {
+.stChatMessage[data-testid="assistant-message"] {
+    background: linear-gradient(135deg, rgba(0, 217, 163, 0.2) 0%, rgba(0, 217, 163, 0.05) 100%) !important;
+    border-left: 4px solid var(--secondary-color) !important;
+}
+
+/* Chat Input */
+.stChatInput {
+    border-radius: 15px !important;
+}
+
+.stChatInput > div {
     background: var(--bg-card) !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: 10px !important;
+    border: 2px solid var(--border-color) !important;
+    border-radius: 15px !important;
+}
+
+.stChatInput input {
     color: var(--text-primary) !important;
-    font-weight: 600 !important;
+}
+
+/* Expander - Enhanced */
+.streamlit-expanderHeader {
+    background: linear-gradient(135deg, var(--bg-card) 0%, #1a1f3a 100%) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
     transition: all 0.3s ease;
+    padding: 1rem 1.5rem !important;
 }
 
 .streamlit-expanderHeader:hover {
-    border-color: var(--primary-color) !important;
-    background: linear-gradient(90deg, var(--bg-card) 0%, rgba(0, 102, 255, 0.1) 100%) !important;
+    border-color: var(--secondary-color) !important;
+    background: linear-gradient(90deg, var(--bg-card) 0%, rgba(0, 217, 163, 0.15) 100%) !important;
+    transform: translateX(5px);
 }
 
-/* Success/Error Messages */
+.streamlit-expanderContent {
+    background: rgba(21, 27, 61, 0.5) !important;
+    border: 1px solid var(--border-color) !important;
+    border-top: none !important;
+    border-radius: 0 0 12px 12px !important;
+    padding: 1rem !important;
+}
+
+/* Success/Error Messages - Enhanced */
 .stSuccess {
-    background-color: rgba(16, 185, 129, 0.1) !important;
-    border: 1px solid var(--success-green) !important;
-    border-radius: 10px !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.05) 100%) !important;
+    border: 2px solid var(--success-green) !important;
+    border-radius: 12px !important;
     color: var(--success-green) !important;
+    font-weight: 600 !important;
+    animation: slideIn 0.5s ease;
 }
 
 .stError {
-    background-color: rgba(239, 68, 68, 0.1) !important;
-    border: 1px solid var(--danger-red) !important;
-    border-radius: 10px !important;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%) !important;
+    border: 2px solid var(--danger-red) !important;
+    border-radius: 12px !important;
     color: var(--danger-red) !important;
+    font-weight: 600 !important;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
 }
 
 .stInfo {
-    background-color: rgba(0, 102, 255, 0.1) !important;
-    border: 1px solid var(--primary-color) !important;
-    border-radius: 10px !important;
+    background: linear-gradient(135deg, rgba(0, 102, 255, 0.2) 0%, rgba(0, 102, 255, 0.05) 100%) !important;
+    border: 2px solid var(--primary-color) !important;
+    border-radius: 12px !important;
     color: var(--primary-color) !important;
+    font-weight: 600 !important;
 }
 
-/* Slider */
+.stWarning {
+    background: linear-gradient(135deg, rgba(255, 184, 0, 0.2) 0%, rgba(255, 184, 0, 0.05) 100%) !important;
+    border: 2px solid var(--accent-gold) !important;
+    border-radius: 12px !important;
+    color: var(--accent-gold) !important;
+    font-weight: 600 !important;
+}
+
+/* Slider - Enhanced */
 .stSlider > div > div > div {
-    background-color: var(--primary-color) !important;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
 }
 
-/* Checkbox */
+.stSlider [role="slider"] {
+    background-color: white !important;
+    border: 3px solid var(--primary-color) !important;
+    box-shadow: 0 4px 15px rgba(0, 102, 255, 0.5) !important;
+}
+
+/* Checkbox - Enhanced */
 .stCheckbox > label {
     color: var(--text-primary) !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
+    font-size: 15px !important;
+    transition: all 0.3s ease;
 }
 
-.stCheckbox > label > div[data-testid="stMarkdownContainer"] > p {
-    font-size: 16px !important;
+.stCheckbox > label:hover {
+    color: var(--secondary-color) !important;
+    transform: translateX(3px);
+}
+
+.stCheckbox input[type="checkbox"]:checked + div {
+    background-color: var(--secondary-color) !important;
+}
+
+/* Tabs - Enhanced */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 10px;
+    background: rgba(21, 27, 61, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem;
+    border-radius: 12px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background-color: transparent;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-weight: 700;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(0, 102, 255, 0.1);
+    color: var(--primary-color);
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 102, 255, 0.5);
+}
+
+/* Progress Bar */
+.stProgress > div > div {
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border-radius: 10px;
+    animation: progress-animation 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-animation {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 /* Markdown Text */
@@ -208,148 +448,79 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
 
 .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
     color: var(--text-primary);
-    font-weight: 700;
+    font-weight: 800;
+    font-family: 'Poppins', sans-serif;
+}
+
+.stMarkdown h1 {
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 /* Divider */
 hr {
-    border-color: var(--border-color) !important;
+    border: none !important;
+    height: 2px !important;
+    background: linear-gradient(90deg, transparent, var(--border-color), transparent) !important;
     margin: 2rem 0 !important;
 }
 
 /* Loading Spinner */
 .stSpinner > div {
-    border-top-color: var(--primary-color) !important;
+    border-top-color: var(--secondary-color) !important;
+    border-right-color: var(--primary-color) !important;
 }
 
-/* Custom Card Class */
-.custom-card {
-    background: var(--bg-card);
-    padding: 1.5rem;
-    border-radius: 15px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    margin: 1rem 0;
-    transition: all 0.3s ease;
-}
-
-.custom-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0, 102, 255, 0.2);
-    border-color: var(--primary-color);
-}
-
-/* Live Indicator */
+/* Live Indicator - Enhanced */
 .live-indicator {
     display: inline-block;
-    width: 8px;
-    height: 8px;
-    background-color: var(--success-green);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-    margin-right: 8px;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
-}
-
-/* Badge */
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.badge-success {
-    background-color: rgba(16, 185, 129, 0.2);
-    color: var(--success-green);
-    border: 1px solid var(--success-green);
-}
-
-.badge-warning {
-    background-color: rgba(255, 184, 0, 0.2);
-    color: var(--accent-gold);
-    border: 1px solid var(--accent-gold);
-}
-
-.badge-danger {
-    background-color: rgba(239, 68, 68, 0.2);
-    color: var(--danger-red);
-    border: 1px solid var(--danger-red);
-}
-
-/* Progress Bar */
-.progress-bar {
-    width: 100%;
-    height: 8px;
-    background-color: var(--border-color);
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 0.5rem 0;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-    border-radius: 10px;
-    transition: width 0.3s ease;
-}
-
-/* Tooltip */
-.tooltip {
-    position: relative;
-    display: inline-block;
-    cursor: help;
-}
-
-/* Tab styling */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background-color: var(--bg-card);
-    padding: 0.5rem;
-    border-radius: 10px;
-}
-
-.stTabs [data-baseweb="tab"] {
-    background-color: transparent;
-    border-radius: 8px;
-    color: var(--text-secondary);
-    font-weight: 600;
-    padding: 0.75rem 1.5rem;
-}
-
-.stTabs [aria-selected="true"] {
-    background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    color: white;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
     width: 10px;
     height: 10px;
+    background-color: var(--success-green);
+    border-radius: 50%;
+    animation: pulse-live 2s infinite;
+    margin-right: 8px;
+    box-shadow: 0 0 10px var(--success-green);
+}
+
+@keyframes pulse-live {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.2);
+    }
+}
+
+/* Scrollbar - Enhanced */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
 }
 
 ::-webkit-scrollbar-track {
     background: var(--bg-dark);
+    border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 5px;
+    background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+    border-radius: 10px;
+    border: 2px solid var(--bg-dark);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-dark);
+    background: linear-gradient(180deg, var(--secondary-color), var(--primary-color));
+}
+
+/* Container Borders */
+[data-testid="stVerticalBlock"] > div {
+    border-radius: 15px;
 }
 
 /* Responsive Design */
@@ -365,33 +536,63 @@ hr {
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
         font-size: 24px !important;
     }
+    
+    .logo-image {
+        width: 40px;
+        height: 40px;
+    }
 }
 
 /* Animation Classes */
 .fade-in {
-    animation: fadeIn 0.5s ease;
+    animation: fadeIn 0.6s ease;
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-.slide-up {
-    animation: slideUp 0.5s ease;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(-10px);
     }
     to {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.slide-up {
+    animation: slideUp 0.6s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Floating Animation for Icons */
+.float-animation {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Gradient Text */
+.gradient-text {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
 }
