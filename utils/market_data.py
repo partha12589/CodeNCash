@@ -13,17 +13,23 @@ class IndianMarketData:
         """Get top Indian stocks recommendations based on market cap"""
         # Top blue-chip stocks in India
         top_stocks = [
-            {"symbol": "RELIANCE", "name": "Reliance Industries", "sector": "Energy"},
-            {"symbol": "TCS", "name": "Tata Consultancy Services", "sector": "IT"},
-            {"symbol": "HDFCBANK", "name": "HDFC Bank", "sector": "Banking"},
-            {"symbol": "INFY", "name": "Infosys", "sector": "IT"},
-            {"symbol": "ICICIBANK", "name": "ICICI Bank", "sector": "Banking"},
-            {"symbol": "HINDUNILVR", "name": "Hindustan Unilever", "sector": "FMCG"},
-            {"symbol": "ITC", "name": "ITC Limited", "sector": "FMCG"},
-            {"symbol": "SBIN", "name": "State Bank of India", "sector": "Banking"},
-            {"symbol": "BHARTIARTL", "name": "Bharti Airtel", "sector": "Telecom"},
-            {"symbol": "KOTAKBANK", "name": "Kotak Mahindra Bank", "sector": "Banking"}
-        ]
+        {"symbol": "RELIANCE", "name": "Reliance Industries", "sector": "Energy"},
+        {"symbol": "TCS", "name": "Tata Consultancy Services", "sector": "IT"},
+        {"symbol": "HDFCBANK", "name": "HDFC Bank", "sector": "Banking"},
+        {"symbol": "INFY", "name": "Infosys", "sector": "IT"},
+        {"symbol": "ICICIBANK", "name": "ICICI Bank", "sector": "Banking"},
+        {"symbol": "HINDUNILVR", "name": "Hindustan Unilever", "sector": "FMCG"},
+        {"symbol": "ITC", "name": "ITC Limited", "sector": "FMCG"},
+        {"symbol": "SBIN", "name": "State Bank of India", "sector": "Banking"},
+        {"symbol": "BHARTIARTL", "name": "Bharti Airtel", "sector": "Telecom"},
+        {"symbol": "KOTAKBANK", "name": "Kotak Mahindra Bank", "sector": "Banking"},
+        # ADD MORE STOCKS HERE
+        {"symbol": "LT", "name": "Larsen & Toubro", "sector": "Infrastructure"},
+        {"symbol": "AXISBANK", "name": "Axis Bank", "sector": "Banking"},
+        {"symbol": "WIPRO", "name": "Wipro", "sector": "IT"},
+        {"symbol": "MARUTI", "name": "Maruti Suzuki", "sector": "Automobile"},
+        {"symbol": "TITAN", "name": "Titan Company", "sector": "Consumer Goods"},
+    ]
         return top_stocks[:limit]
     
     def get_mutual_funds(self, category="equity"):

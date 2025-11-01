@@ -40,6 +40,10 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = "Portfolio"
 if 'chat_context' not in st.session_state:
     st.session_state.chat_context = ""
+if 'tax_data' not in st.session_state:
+    st.session_state.tax_data = None
+if 'goal_data' not in st.session_state:
+    st.session_state.goal_data = None
 
 # Initialize handlers
 portfolio_gen = PortfolioGenerator()
@@ -49,6 +53,55 @@ live_market = LiveMarketData()
 visualizer = PortfolioVisualizations()
 tax_optimizer = TaxOptimizer()
 goal_planner = GoalBasedPlanner()
+
+# Function to build comprehensive chat context
+def build_chat_context():
+    """Build comprehensive context from all user data"""
+    context_parts = []
+    
+    # Portfolio Context
+    if st.session_state.portfolio_generated and st.session_state.current_portfolio:
+        portfolio = st.session_state.current_portfolio
+        context_parts.append(f"""
+[PORTFOLIO CONTEXT]
+- Investment Goal: {portfolio.get('goal', 'Wealth Creation')}
+- Time Horizon: {portfolio.get('time_horizon', 'Long Term')}
+- Initial Capital: ₹{portfolio['total_investment']:,}
+- Monthly SIP: ₹{portfolio['monthly_sip']:,}
+- Risk Profile: {portfolio['risk_level']}
+- Asset Allocation: {', '.join([f"{k.replace('_', ' ').title()}: {v}%" for k, v in portfolio['allocation'].items()])}
+- Expected 5Y Value: ₹{portfolio['projected_returns']['5_year']['total_value']:,.0f}
+- Expected 5Y Gains: ₹{portfolio['projected_returns']['5_year']['gains']:,.0f}
+""")
+    
+    # Tax Context
+    if st.session_state.tax_data:
+        tax = st.session_state.tax_data
+        context_parts.append(f"""
+[TAX PLANNING CONTEXT]
+- Annual Income: ₹{tax.get('income', 0):,}
+- Current Tax Regime: {tax.get('better_regime', 'Not calculated')}
+- Tax Under New Regime: ₹{tax.get('new_regime_tax', 0):,.0f}
+- Tax Under Old Regime: ₹{tax.get('old_regime_tax', 0):,.0f}
+- Current 80C Investments: ₹{tax.get('current_80c', 0):,}
+- Remaining 80C Limit: ₹{max(0, 150000 - tax.get('current_80c', 0)):,}
+- Potential Tax Savings: ₹{tax.get('potential_savings', 0):,.0f}
+""")
+    
+    # Goal Planning Context
+    if st.session_state.goal_data:
+        goal = st.session_state.goal_data
+        context_parts.append(f"""
+[FINANCIAL GOAL CONTEXT]
+- Goal Type: {goal.get('goal_type', 'Not set')}
+- Target Amount: ₹{goal.get('target_amount', 0):,.0f}
+- Time Horizon: {goal.get('years', 0)} years
+- Required Monthly SIP: ₹{goal.get('required_sip', 0):,.0f}
+- Current Savings: ₹{goal.get('existing_savings', 0):,}
+- Shortfall: ₹{goal.get('shortfall', 0):,.0f}
+""")
+    
+    return "\n".join(context_parts) if context_parts else "No user data available yet. Provide general investment advice for Indian investors."
 
 # Header with enhanced styling
 st.markdown('<div class="main-header fade-in">', unsafe_allow_html=True)
@@ -270,17 +323,8 @@ if st.session_state.current_page == "Portfolio":
                 st.session_state.current_portfolio = portfolio
                 st.session_state.portfolio_generated = True
                 
-                # Update chat context
-                st.session_state.chat_context = (
-                    f"User has generated a portfolio with the following details:\n"
-                    f"- Investment Goal: {investment_goal}\n"
-                    f"- Time Horizon: {time_horizon}\n"
-                    f"- Initial Capital: ₹{capital:,}\n"
-                    f"- Monthly SIP: ₹{monthly_investment:,}\n"
-                    f"- Risk Profile: {risk_appetite}\n"
-                    f"- Asset Classes: {', '.join([k.replace('_', ' ').title() for k, v in preferences.items() if v])}\n"
-                    f"- Expected 5Y Returns: ₹{portfolio['projected_returns']['5_year']['total_value']:,.0f}"
-                )
+                # Update global chat context
+                st.session_state.chat_context = build_chat_context()
                 
                 progress_container.empty()
                 status_container.empty()
@@ -371,14 +415,19 @@ if st.session_state.current_page == "Portfolio":
             with tab3:
                 st.markdown("#### 🎯 Recommended Investments")
                 
+                # Number of holdings to show
+                num_stocks_to_show = st.slider("Number of stocks to display", 3, 10, 5, key="num_stocks")
+                num_mf_to_show = st.slider("Number of mutual funds to display", 3, 10, 5, key="num_mf")
+                num_debt_to_show = st.slider("Number of debt instruments to display", 3, 10, 5, key="num_debt")
+                
                 # Stocks
                 if 'stocks' in portfolio.get('recommendations', {}):
                     stock_data = portfolio['recommendations']['stocks']
                     with st.expander(f"📈 Equity Stocks - ₹{stock_data['amount']:,.0f}", expanded=True):
-                        st.caption(f"Invest in {len(stock_data['list'])} top blue-chip stocks")
+                        st.caption(f"Invest in top blue-chip stocks")
                         
-                        for idx, stock in enumerate(stock_data['list'][:5], 1):
-                            allocation = stock_data['amount'] / len(stock_data['list'])
+                        for idx, stock in enumerate(stock_data['list'][:num_stocks_to_show], 1):
+                            allocation = stock_data['amount'] / len(stock_data['list'][:num_stocks_to_show])
                             
                             st.markdown(f"""
                             <div style='background: rgba(21, 27, 61, 0.6); padding: 1rem; border-radius: 10px; 
@@ -397,8 +446,8 @@ if st.session_state.current_page == "Portfolio":
                     with st.expander(f"💰 Mutual Funds - ₹{mf_data['amount']:,.0f}"):
                         st.caption(f"Diversified equity mutual funds")
                         
-                        for idx, mf in enumerate(mf_data['list'][:3], 1):
-                            sip_per_fund = (portfolio['monthly_sip'] * 0.4) / len(mf_data['list'])
+                        for idx, mf in enumerate(mf_data['list'][:num_mf_to_show], 1):
+                            sip_per_fund = (portfolio['monthly_sip'] * 0.4) / len(mf_data['list'][:num_mf_to_show])
                             
                             st.markdown(f"""
                             <div style='background: rgba(21, 27, 61, 0.6); padding: 1rem; border-radius: 10px; 
@@ -417,8 +466,8 @@ if st.session_state.current_page == "Portfolio":
                     with st.expander(f"🏦 Debt Instruments - ₹{debt_data['amount']:,.0f}"):
                         st.caption("Safe and stable fixed-income investments")
                         
-                        for idx, debt in enumerate(debt_data['list'][:3], 1):
-                            allocation = debt_data['amount'] / len(debt_data['list'])
+                        for idx, debt in enumerate(debt_data['list'][:num_debt_to_show], 1):
+                            allocation = debt_data['amount'] / len(debt_data['list'][:num_debt_to_show])
                             
                             st.markdown(f"""
                             <div style='background: rgba(21, 27, 61, 0.6); padding: 1rem; border-radius: 10px; 
@@ -540,6 +589,19 @@ elif st.session_state.current_page == "Tax":
             if st.button("Compare Regimes", type="primary", use_container_width=True, key="compare_tax_btn"):
                 comparison = tax_optimizer.compare_regimes(annual_income, deductions)
                 st.session_state.tax_comparison = comparison
+                
+                # Store tax data for AI context
+                st.session_state.tax_data = {
+                    'income': annual_income,
+                    'better_regime': comparison['better_regime'],
+                    'new_regime_tax': comparison['new_regime']['total_tax'],
+                    'old_regime_tax': comparison['old_regime']['total_tax'],
+                    'current_80c': deductions.get('80c', 0),
+                    'potential_savings': comparison['savings']
+                }
+                
+                # Update global context
+                st.session_state.chat_context = build_chat_context()
         
         with col2:
             if 'tax_comparison' in st.session_state:
@@ -680,6 +742,19 @@ elif st.session_state.current_page == "Goal":
                     current_age, retirement_age, monthly_expenses, 85, existing_corpus
                 )
                 st.session_state.retirement_plan = result
+                
+                # Store goal data for AI context
+                st.session_state.goal_data = {
+                    'goal_type': 'Retirement',
+                    'target_amount': result['required_corpus'],
+                    'years': result['years_to_retirement'],
+                    'required_sip': result['required_monthly_sip'],
+                    'existing_savings': existing_corpus,
+                    'shortfall': result['shortfall']
+                }
+                
+                # Update global context
+                st.session_state.chat_context = build_chat_context()
         
         with col2:
             if 'retirement_plan' in st.session_state:
@@ -720,6 +795,20 @@ elif st.session_state.current_page == "Goal":
                     child_age, edu_start_age, course_cost, edu_savings
                 )
                 st.session_state.education_plan = result
+                
+                # Store goal data for AI context
+                if 'error' not in result:
+                    st.session_state.goal_data = {
+                        'goal_type': 'Child Education',
+                        'target_amount': result['future_course_cost'],
+                        'years': result['years_to_goal'],
+                        'required_sip': result['required_monthly_sip'],
+                        'existing_savings': edu_savings,
+                        'shortfall': result['shortfall']
+                    }
+                    
+                    # Update global context
+                    st.session_state.chat_context = build_chat_context()
         
         with col2:
             if 'education_plan' in st.session_state:
@@ -754,6 +843,19 @@ elif st.session_state.current_page == "Goal":
             if st.button("Calculate Emergency Fund", type="primary", use_container_width=True, key="calc_emerg_btn"):
                 result = goal_planner.emergency_fund_planning(monthly_exp, coverage, existing_fund)
                 st.session_state.emergency_plan = result
+                
+                # Store goal data for AI context
+                st.session_state.goal_data = {
+                    'goal_type': 'Emergency Fund',
+                    'target_amount': result['required_corpus'],
+                    'years': result['months_to_build'] / 12,
+                    'required_sip': result['required_monthly_saving'],
+                    'existing_savings': existing_fund,
+                    'shortfall': result['shortfall']
+                }
+                
+                # Update global context
+                st.session_state.chat_context = build_chat_context()
         
         with col2:
             if 'emergency_plan' in st.session_state:
@@ -789,19 +891,35 @@ else:  # AI Chat
     st.markdown("### 💬 AI Investment Advisor")
     st.caption("Chat with CodeNCash AI - Your personal investment assistant powered by LLaMA 3.3 70B")
     
-    # Show portfolio context if available
-    if st.session_state.portfolio_generated:
-        with st.expander("📊 Current Portfolio Context", expanded=False):
-            portfolio = st.session_state.current_portfolio
-            st.markdown(f"""
-            **Your Portfolio Summary:**
-            - 💰 Capital: ₹{portfolio['total_investment']:,}
-            - 📅 Monthly SIP: ₹{portfolio['monthly_sip']:,}
-            - 🎯 Risk: {portfolio['risk_level']}
-            - 📈 5Y Projection: ₹{portfolio['projected_returns']['5_year']['total_value']:,.0f}
+    # Show comprehensive context if available
+    if st.session_state.portfolio_generated or st.session_state.tax_data or st.session_state.goal_data:
+        with st.expander("📊 Your Financial Profile", expanded=False):
             
-            *The AI has full context of your portfolio and can answer specific questions about it.*
-            """)
+            if st.session_state.portfolio_generated:
+                portfolio = st.session_state.current_portfolio
+                st.markdown(f"""
+                **💼 Portfolio:**
+                - Capital: ₹{portfolio['total_investment']:,} | Monthly SIP: ₹{portfolio['monthly_sip']:,}
+                - Risk: {portfolio['risk_level']} | 5Y Projection: ₹{portfolio['projected_returns']['5_year']['total_value']:,.0f}
+                """)
+            
+            if st.session_state.tax_data:
+                tax = st.session_state.tax_data
+                st.markdown(f"""
+                **💸 Tax Planning:**
+                - Income: ₹{tax['income']:,} | Better Regime: {tax['better_regime']}
+                - Remaining 80C: ₹{max(0, 150000 - tax['current_80c']):,}
+                """)
+            
+            if st.session_state.goal_data:
+                goal = st.session_state.goal_data
+                st.markdown(f"""
+                **🎯 Financial Goal:**
+                - Type: {goal['goal_type']} | Target: ₹{goal['target_amount']:,.0f}
+                - Required SIP: ₹{goal['required_sip']:,.0f}/month
+                """)
+            
+            st.caption("*The AI has full context and can answer specific questions about your data.*")
     
     st.markdown("---")
     
@@ -809,16 +927,28 @@ else:  # AI Chat
     if len(st.session_state.messages) == 0:
         st.markdown("**💡 Quick Start Questions:**")
         
+        suggestions = []
+        
         if st.session_state.portfolio_generated:
-            suggestions = [
+            suggestions.extend([
                 ("📊", "Analyze my current portfolio"),
                 ("🎯", "How can I improve my portfolio?"),
                 ("💰", "Should I increase my SIP amount?"),
-                ("📈", "What are the risks in my portfolio?"),
-                ("💸", "Tax-saving opportunities for me?"),
-                ("🔄", "When should I rebalance?")
-            ]
-        else:
+            ])
+        
+        if st.session_state.tax_data:
+            suggestions.extend([
+                ("💸", "How can I save more taxes?"),
+                ("📋", "Which tax regime is better for me?"),
+            ])
+        
+        if st.session_state.goal_data:
+            suggestions.extend([
+                ("🎯", "Am I on track for my goal?"),
+                ("📈", "How to accelerate my goal?"),
+            ])
+        
+        if not suggestions:
             suggestions = [
                 ("🎯", "What are the best mutual funds for beginners?"),
                 ("💰", "How does SIP investment work in India?"),
@@ -830,15 +960,16 @@ else:  # AI Chat
         
         # Create suggestion buttons in a grid
         cols = st.columns(3)
-        for idx, (icon, text) in enumerate(suggestions):
+        for idx, (icon, text) in enumerate(suggestions[:6]):
             with cols[idx % 3]:
                 if st.button(f"{icon} {text}", key=f"suggest_{idx}", use_container_width=True):
                     # Add to messages
                     st.session_state.messages.append({"role": "user", "content": text})
                     
-                    # Get response with context
+                    # Get response with full context
                     with st.spinner("🤔 Thinking..."):
-                        response = chat_handler.get_response(text, st.session_state.chat_context)
+                        context = build_chat_context()
+                        response = chat_handler.get_response(text, context)
                     
                     st.session_state.messages.append({"role": "assistant", "content": response})
                     st.rerun()
@@ -876,16 +1007,16 @@ else:  # AI Chat
             with st.chat_message("user", avatar="👤"):
                 st.markdown(prompt)
             
-            # Get AI response
+            # Get AI response with full context
             with st.chat_message("assistant", avatar="🤖"):
                 with st.spinner("🤔 Analyzing your query..."):
-                    # Build enhanced context
-                    context = st.session_state.chat_context
+                    # Build comprehensive context
+                    context = build_chat_context()
                     
                     # Add recent conversation context
                     if len(st.session_state.messages) > 2:
                         recent_context = "\n\nRecent conversation:\n"
-                        for msg in st.session_state.messages[-4:-1]:  # Last 2 exchanges
+                        for msg in st.session_state.messages[-4:-1]:
                             role = "User" if msg["role"] == "user" else "Assistant"
                             recent_context += f"{role}: {msg['content'][:100]}...\n"
                         context += recent_context
@@ -951,14 +1082,3 @@ with footer_cols[2]:
     st.caption(f"{datetime.now().strftime('%I:%M %p')}")
 
 st.markdown('</div>', unsafe_allow_html=True)
-
-# Add custom JavaScript for smooth scrolling (optional)
-st.markdown("""
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Smooth scroll behavior
-    document.documentElement.style.scrollBehavior = 'smooth';
-});
-</script>
-""", unsafe_allow_html=True)
-        
