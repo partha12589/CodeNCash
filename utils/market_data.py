@@ -27,19 +27,19 @@ class IndianMarketData:
         return top_stocks[:limit]
     
     def get_mutual_funds(self, category="equity"):
-        """Get top performing mutual funds"""
+        """Get top performing mutual funds with scheme codes"""
         mutual_funds = {
             "equity": [
-                {"name": "SBI Bluechip Fund", "category": "Large Cap", "returns_3y": "15.2%"},
-                {"name": "ICICI Prudential Bluechip Fund", "category": "Large Cap", "returns_3y": "14.8%"},
-                {"name": "Axis Bluechip Fund", "category": "Large Cap", "returns_3y": "16.1%"},
-                {"name": "Mirae Asset Large Cap Fund", "category": "Large Cap", "returns_3y": "15.5%"},
-                {"name": "Parag Parikh Flexi Cap Fund", "category": "Flexi Cap", "returns_3y": "18.2%"}
+                {"name": "SBI Bluechip Fund", "category": "Large Cap", "returns_3y": "15.2%", "scheme_code": "119551"},
+                {"name": "ICICI Prudential Bluechip Fund", "category": "Large Cap", "returns_3y": "14.8%", "scheme_code": "120503"},
+                {"name": "Axis Bluechip Fund", "category": "Large Cap", "returns_3y": "16.1%", "scheme_code": "120505"},
+                {"name": "Mirae Asset Large Cap Fund", "category": "Large Cap", "returns_3y": "15.5%", "scheme_code": "119598"},
+                {"name": "Parag Parikh Flexi Cap Fund", "category": "Flexi Cap", "returns_3y": "18.2%", "scheme_code": "122639"}
             ],
             "debt": [
-                {"name": "HDFC Corporate Bond Fund", "category": "Corporate Bond", "returns_3y": "7.2%"},
-                {"name": "ICICI Prudential Corporate Bond Fund", "category": "Corporate Bond", "returns_3y": "6.9%"},
-                {"name": "Axis Banking & PSU Debt Fund", "category": "Banking & PSU", "returns_3y": "7.5%"}
+                {"name": "HDFC Corporate Bond Fund", "category": "Corporate Bond", "returns_3y": "7.2%", "scheme_code": "119533"},
+                {"name": "ICICI Prudential Corporate Bond Fund", "category": "Corporate Bond", "returns_3y": "6.9%", "scheme_code": "120504"},
+                {"name": "Axis Banking & PSU Debt Fund", "category": "Banking & PSU", "returns_3y": "7.5%", "scheme_code": "120506"}
             ]
         }
         return mutual_funds.get(category, mutual_funds["equity"])
