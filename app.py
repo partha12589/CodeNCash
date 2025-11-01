@@ -3,6 +3,7 @@ import pandas as pd
 from utils.portfolio import PortfolioGenerator
 from utils.chat_handler import ChatHandler
 from utils.market_data import IndianMarketData
+from utils.pdf_generator import PortfolioPDFGenerator
 from datetime import datetime
 
 # Page configuration
@@ -27,6 +28,7 @@ if 'portfolio_generated' not in st.session_state:
 portfolio_gen = PortfolioGenerator()
 chat_handler = ChatHandler()
 market_data = IndianMarketData()
+pdf_generator = PortfolioPDFGenerator()
 
 # Sidebar for user inputs
 with st.sidebar:
@@ -165,7 +167,24 @@ with col2:
             st.write(f"**{period_name}:**")
             st.write(f"  💰 Total Value: ₹{values['total_value']:,.0f}")
             st.write(f"  📈 Gains: ₹{values['gains']:,.0f}")
-
+        
+        st.markdown("---")
+        
+        # PDF Download Button
+        try:
+            pdf_bytes = pdf_generator.generate_pdf(portfolio)
+            st.download_button(
+                label="📄 Download Portfolio Report (PDF)",
+                data=pdf_bytes,
+                file_name=f"portfolio_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.error(f"Error generating PDF: {str(e)}")
+        
+        st.markdown("---")
         
         # Investment recommendations
         if portfolio['recommendations']:
